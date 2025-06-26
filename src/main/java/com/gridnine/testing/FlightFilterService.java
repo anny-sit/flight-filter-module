@@ -1,44 +1,67 @@
 package com.gridnine.testing;
 
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 
 public class FlightFilterService {
 
-    public static List<Flight> filterFlights(List<Flight> flights, FlightFilters filters) {
-        return flights.stream()
-                .filter(flight -> filters.departureBefore() == null && filters.arrivalBefore() == null ||
-                        isNotDepartedOrArrived(flight, filters))
-                .filter(flight -> filters.maxTransferHours() == 0 || hasValidTransfers(flight, filters.maxTransferHours()))
-                .filter(flight -> isValidSegments(flight))
-                .toList();
-    }
-
-    private static boolean isValidSegments(Flight flight) {
-        return flight.getSegments().stream()
-                .noneMatch(s -> s.getArrivalDate().isBefore(s.getDepartureDate()));
-    }
-
-    private static boolean isNotDepartedOrArrived(Flight flight, FlightFilters filters) {
-        return flight.getSegments().stream()
-                .noneMatch(s ->
-                        (filters.departureBefore() != null &&
-                                s.getDepartureDate().isBefore(filters.departureBefore())) ||
-                                (filters.arrivalBefore() != null &&
-                                        s.getArrivalDate().isBefore(filters.arrivalBefore()))
-                );
-    }
-
-    private static boolean hasValidTransfers(Flight flight, int maxHours) {
-        List<Segment> segments = flight.getSegments();
-        if (segments.size() <= 1) return true;
-
-        for (int i = 0; i < segments.size() - 1; i++) {
-            long hours = ChronoUnit.HOURS.between(
-                    segments.get(i).getArrivalDate(),
-                    segments.get(i + 1).getDepartureDate());
-            if (hours > maxHours) return false;
+    public static List<Flight> removeInvalidSegments(List<Flight> flights) {
+        List<Flight> validFlights = new ArrayList<>();
+        for (Flight flight : flights) {
+            boolean isValid = true;
+            for (Segment segment : flight.getSegments()) {
+                if (!segment.getArrivalDate().isAfter(segment.getDepartureDate())) {
+                    isValid = false;
+                    break;
+                }
+            }
+            if (isValid) {
+                validFlights.add(flight);
+            }
         }
-        return true;
+        return validFlights;
+    }
+
+    public static List<Flight> removeDepartedFlights(List<Flight> flights) {
+        LocalDateTime now = LocalDateTime.now();
+        List<Flight> validFlights = new ArrayList<>();
+        for (Flight flight : flights) {
+            boolean allValid = true;
+            for (Segment segment : flight.getSegments()) {
+                if (segment.getDepartureDate().isBefore(now)) {
+                    allValid = false;
+                    break;
+                }
+            }
+            if (allValid) {
+                validFlights.add(flight);
+            }
+        }
+        return validFlights;
+    }
+
+    public static List<Flight> removeFlightsWithLongTransfers(List<Flight> flights) {
+        final int MAX_TOTAL_TRANSFER_HOURS = 2;
+        List<Flight> validFlights = new ArrayList<>();
+        for (Flight flight : flights) {
+            List<Segment> segments = flight.getSegments();
+            long totalTransferTime = 0;
+
+            if (segments.size() > 1) {
+                for (int i = 0; i < segments.size() - 1; i++) {
+                    totalTransferTime += ChronoUnit.HOURS.between(
+                            segments.get(i).getArrivalDate(),
+                            segments.get(i + 1).getDepartureDate()
+                    );
+                }
+            }
+
+            if (totalTransferTime <= MAX_TOTAL_TRANSFER_HOURS) {
+                validFlights.add(flight);
+            }
+        }
+        return validFlights;
     }
 }

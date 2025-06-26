@@ -1,6 +1,5 @@
 package com.gridnine.testing;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 public class Main {
@@ -11,18 +10,15 @@ public class Main {
         flights.forEach(System.out::println);
 
         System.out.println("=== Перелёты без некорректных сегментов ===");
-        FlightFilterService.filterFlights(flights,
-                        new FlightFilters(null, null, 0))
+        FlightFilterService.removeInvalidSegments(flights).stream()
                 .forEach(System.out::println);
 
         System.out.println("=== Перелёты без вылетов в прошлом ===");
-        FlightFilterService.filterFlights(flights,
-                        new FlightFilters(LocalDateTime.now(), null, 0))
+        FlightFilterService.removeDepartedFlights(flights).stream()
                 .forEach(System.out::println);
 
         System.out.println("=== Перелёты без длинных пересадок ===");
-        FlightFilterService.filterFlights(flights,
-                        new FlightFilters(null, null, 2))
+        FlightFilterService.removeFlightsWithLongTransfers(flights).stream()
                 .forEach(System.out::println);
     }
 }
